@@ -4,20 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ตรวจรหัสสินค้า</title>
+  
+  <!-- ไอคอนเว็บ -->
+  <link rel="icon" type="image/png" href="https://i.postimg.cc/0NP9YsLz/Logo-CTS.png">
+  
   <style>
     /* ใช้ฟอนต์ Prompt เพื่อความทันสมัยและอ่านง่าย */
     @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
     
     :root {
       /* Palette: Modern Tech / Clean Dark */
-      --bg-main: #0f172a;        /* พื้นหลังสีน้ำเงินเข้มเกือบดำ */
-      --bg-card: #1e293b;        /* สีพื้นหลังการ์ด */
-      --accent-primary: #3b82f6; /* สีน้ำเงิน Electric Blue */
+      --bg-main: #0f172a;        
+      --bg-card: #1e293b;        
+      --accent-primary: #3b82f6; 
       --accent-hover: #2563eb;
-      --accent-secondary: #0ea5e9; /* ฟ้าสว่าง */
+      --accent-secondary: #0ea5e9; 
       --text-light: #f1f5f9;
       --text-muted: #94a3b8;
-      --success: #10b981;        /* เขียวตรวจสอบผ่าน */
+      --success: #10b981;        
       --danger: #ef4444;
       --border-color: #334155;
     }
@@ -55,17 +59,6 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
-    }
-
-    .header-icon {
-      font-size: 28px;
-      animation: pulse-icon 2s infinite;
-    }
-
-    @keyframes pulse-icon {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
     }
 
     h1 {
@@ -304,7 +297,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
-      flex-wrap: wrap; /* รองรับข้อความยาว */
+      flex-wrap: wrap; 
       gap: 10px;
     }
     
@@ -314,7 +307,6 @@
       font-size: 15px;
     }
     
-    /* ปรับแต่งผลลัพธ์ให้เด่นขึ้น (Badge Style) */
     .individual-result-box {
       font-size: 16px;
       color: #fff;
@@ -325,9 +317,8 @@
       box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
       letter-spacing: 0.5px;
       text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      display: none; /* ซ่อนไว้ก่อนถ้าไม่มีข้อมูล */
+      display: none; 
     }
-    /* แสดงเมื่อมีข้อมูล (JS จะลบ display:none ออก หรือจัดการผ่าน innerHTML) */
     .individual-result-box:not(:empty) {
       display: inline-block;
       animation: fadeIn 0.3s ease;
@@ -363,7 +354,7 @@
       color: white;
       border: none;
       border-radius: 8px;
-      width: 44px; /* Square button */
+      width: 44px; 
       display: flex;
       align-items: center;
       justify-content: center;
@@ -414,7 +405,6 @@
 
   <!-- Header -->
   <div class="header">
-    <!-- <span class="header-icon">✅</span> -->
     <h1>ระบบตรวจโครงสร้างรหัสสินค้า</h1>
   </div>
 
@@ -435,6 +425,9 @@
     <div class="manual-search-btn" onclick="openManualSearch()">
       <span>🔍 ค้นหาด้วยรหัส</span>
     </div>
+    
+    <!-- สำหรับแสดงเวอร์ชัน API เล็กๆ มุมล่าง -->
+    <div id="api-version" style="font-size: 12px; color: var(--text-muted); margin-top: 20px;"></div>
 
   </div>
 
@@ -444,6 +437,42 @@
   </div>
 
   <script>
+    // ========================================================
+    // ⚙️ ตั้งค่าลิงก์เชื่อมต่อฐานข้อมูล GAS (API) 
+    // นำ URL Web App (Deploy as Web App) มาใส่ที่นี่
+    // ========================================================
+    const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxH6viyr7FtGU28UeyoLjM5eq2VrXhKZ7qy_pLNZEbkHpgFlLSiYeQntIqtu8aB7X09/exec";
+
+    // ฟังก์ชันหลักสำหรับสื่อสารกับ Backend (Fetch API)
+    async function callGasApi(action, data = {}) {
+      if (GAS_WEBAPP_URL === "YOUR_GAS_WEB_APP_URL_HERE" || GAS_WEBAPP_URL === "") {
+        Swal.fire("ข้อผิดพลาด", "กรุณาตั้งค่า GAS_WEBAPP_URL ในโค้ดก่อนใช้งาน", "error");
+        throw new Error("Missing GAS_WEBAPP_URL");
+      }
+      try {
+        const response = await fetch(GAS_WEBAPP_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: action, data: data }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' } // ป้องกันปัญหา CORS
+        });
+        return await response.json();
+      } catch (error) {
+        console.error("API Error:", error);
+        throw error;
+      }
+    }
+
+    // ทดสอบดึง Version ตอนโหลดหน้าเว็บ
+    window.onload = () => {
+      callGasApi('testConnection')
+        .then(res => {
+          if(res.success) {
+            document.getElementById('api-version').innerText = `API Connected: ${res.version}`;
+          }
+        })
+        .catch(e => console.log("Init connection failed."));
+    };
+
     let html5QrCode;
     let isScanning = false;
 
@@ -471,7 +500,7 @@
         onScanSuccess, 
         onScanFailure
       ).catch(err => {
-        Swal.fire("Error", "ไม่สามารถเปิดกล้องได้", "error");
+        Swal.fire("Error", "ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์เข้าถึงกล้อง", "error");
         stopScan();
       });
     }
@@ -490,6 +519,8 @@
           btnIcon.innerText = "📷";
           btn.classList.remove('active');
           isScanning = false;
+        }).catch(err => {
+          console.error("Failed to stop scanner", err);
         });
       }
     }
@@ -499,7 +530,31 @@
       processCode(decodedText, 'scan');
     }
 
-    function onScanFailure(error) {}
+    function onScanFailure(error) {
+       // Ignore scan failure (happens during active scanning to find a code)
+    }
+
+    // --- Processing from API ---
+    async function processCode(code, type) {
+      if (type === 'scan') {
+        document.getElementById('loading').style.display = 'flex';
+        try {
+          // เรียกใช้งาน API ผ่าน fetch แทน google.script.run
+          const response = await callGasApi('decodeProductCode', { code: code });
+          
+          document.getElementById('loading').style.display = 'none';
+          
+          if (response.error || !response.success) {
+            Swal.fire({ title: "ไม่พบข้อมูล", text: response.error || "ไม่สามารถอ่านข้อมูลได้", icon: "warning", confirmButtonColor: '#3b82f6' });
+          } else {
+            showScanResultPopup(response.data);
+          }
+        } catch (err) {
+          document.getElementById('loading').style.display = 'none';
+          Swal.fire("Error", "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", "error");
+        }
+      }
+    }
 
     // --- Manual Search Logic (Full Code) ---
     function openManualSearch() {
@@ -524,47 +579,46 @@
       });
     }
 
-    function submitManualSearch() {
+    async function submitManualSearch() {
       const code = document.getElementById('manual-full-code').value;
       if (!code) {
         Swal.showValidationMessage('กรุณากรอกรหัส');
         return;
       }
       
-      // Show loading inside the container
-      document.getElementById('manual-result-container').innerHTML = '<div style="text-align:center;">กำลังค้นหา...</div>';
+      const resultContainer = document.getElementById('manual-result-container');
+      resultContainer.innerHTML = '<div style="text-align:center;">กำลังค้นหา...</div>';
       
-      google.script.run
-        .withSuccessHandler(response => {
-          if (response.error) {
-             document.getElementById('manual-result-container').innerHTML = `<div style="color:red; text-align:center;">${response.error}</div>`;
-          } else {
-             const data = response.data;
-             const resultHtml = `
-               <table class="result-table">
-                 <tr><td>ชื่อสินค้า</td><td><span class="highlight-value">${data.productName}</span></td></tr>
-                 <tr><td>D1 ประเภท</td><td>${data.d1}</td></tr>
-                 <tr><td>D2 แหล่งที่มา</td><td>${data.d2}</td></tr>
-                 <tr><td>D3 ชนิดเส้น</td><td>${data.d3}</td></tr>
-                 <tr><td>D4 ดีเนียร์</td><td>${data.d4}</td></tr>
-                 <tr><td>D5 เกรด</td><td>${data.d5}</td></tr>
-                 <tr><td>D6 ควบ/ตีเกลียว</td><td>${data.d6}</td></tr>
-                 <tr><td>D7/8 ลอกกาว+ย้อมสี</td><td>${data.d7_8}</td></tr>
-                 <tr><td>D9 บริการอื่น</td><td>${data.d9}</td></tr>
-               </table>
-             `;
-             document.getElementById('manual-result-container').innerHTML = resultHtml;
-          }
-        })
-        .withFailureHandler(err => {
-           document.getElementById('manual-result-container').innerHTML = `<div style="color:red;">Error: ${err.message}</div>`;
-        })
-        .searchManualCode(code);
+      try {
+        // เรียกใช้งาน API
+        const response = await callGasApi('searchManualCode', { code: code });
+        
+        if (response.error || !response.success) {
+           resultContainer.innerHTML = `<div style="color:red; text-align:center;">${response.error || "ไม่พบข้อมูล"}</div>`;
+        } else {
+           const data = response.data;
+           const resultHtml = `
+             <table class="result-table">
+               <tr><td>ชื่อสินค้า</td><td><span class="highlight-value">${data.productName}</span></td></tr>
+               <tr><td>D1 ประเภท</td><td>${data.d1}</td></tr>
+               <tr><td>D2 แหล่งที่มา</td><td>${data.d2}</td></tr>
+               <tr><td>D3 ชนิดเส้น</td><td>${data.d3}</td></tr>
+               <tr><td>D4 ดีเนียร์</td><td>${data.d4}</td></tr>
+               <tr><td>D5 เกรด</td><td>${data.d5}</td></tr>
+               <tr><td>D6 ควบ/ตีเกลียว</td><td>${data.d6}</td></tr>
+               <tr><td>D7/8 ลอกกาว+ย้อมสี</td><td>${data.d7_8}</td></tr>
+               <tr><td>D9 บริการอื่น</td><td>${data.d9}</td></tr>
+             </table>
+           `;
+           resultContainer.innerHTML = resultHtml;
+        }
+      } catch (err) {
+         resultContainer.innerHTML = `<div style="color:red;">Error: ไม่สามารถเชื่อมต่อฐานข้อมูลได้</div>`;
+      }
     }
 
     // --- Individual Search Logic (รายหลัก) ---
     function openIndividualSearch() {
-      // สร้าง HTML แบบ Card Layout
       const htmlContent = `
         <div style="max-height: 70vh; overflow-y: auto; padding: 5px;">
           <div class="individual-list">
@@ -585,14 +639,13 @@
         title: 'ค้นหารายหลัก',
         html: htmlContent,
         width: '100%',
-        maxWidth: '500px', // ลดความกว้างนิดหน่อยเพื่อให้ดูดีบนมือถือ
+        maxWidth: '500px',
         showConfirmButton: false,
         showCloseButton: true
       });
     }
 
     function createRow(id, label) {
-      // สร้าง Card สำหรับแต่ละรายการ
       return `
         <div class="individual-card">
           <div class="individual-header">
@@ -607,49 +660,31 @@
       `;
     }
 
-    function searchSingle(id) {
+    async function searchSingle(id) {
       const code = document.getElementById(`input-${id}`).value;
       const resSpan = document.getElementById(`result-${id}`);
       
       if(!code) {
-        resSpan.innerHTML = ""; // Clear if empty
+        resSpan.innerHTML = "";
         return;
       }
       
       resSpan.innerHTML = "⏳...";
       
-      google.script.run
-        .withSuccessHandler(result => {
-          resSpan.innerHTML = result;
-        })
-        .withFailureHandler(err => {
-          resSpan.innerHTML = "❌ Error";
-        })
-        .searchSingleField(id, code);
-    }
-
-    // --- Common Processing (Scan) ---
-    function processCode(code, type) {
-      if (type === 'scan') {
-        document.getElementById('loading').style.display = 'flex';
-        google.script.run
-          .withSuccessHandler(response => {
-            document.getElementById('loading').style.display = 'none';
-            if (response.error) {
-              Swal.fire({ title: "ไม่พบข้อมูล", text: response.error, icon: "warning", confirmButtonColor: '#3b82f6' });
-            } else {
-              showScanResultPopup(response.data);
-            }
-          })
-          .withFailureHandler(err => {
-            document.getElementById('loading').style.display = 'none';
-            Swal.fire("Error", err.message, "error");
-          })
-          .decodeProductCode(code);
+      try {
+        // เรียกใช้งาน API
+        const response = await callGasApi('searchSingleField', { type: id, code: code });
+        if(response.success) {
+           resSpan.innerHTML = response.data;
+        } else {
+           resSpan.innerHTML = "❌ " + (response.data || "Error");
+        }
+      } catch (err) {
+        resSpan.innerHTML = "❌ Connection Error";
       }
     }
 
-    // Popup สำหรับ Scan (แบบเดิม)
+    // Popup สำหรับ Scan
     function showScanResultPopup(data) {
       const htmlContent = `
         <div class="result-wrapper">
